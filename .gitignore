@@ -1,0 +1,20 @@
+# Compiled object files
+*.o
+*.hi
+
+# Executables
+*.exe
+Main
+Main.exe
+
+# Cabal / Stack artifacts (in case you use them later)
+dist/
+dist-newstyle/
+.stack-work/
+
+# VS Code settings
+.vscode/
+
+# OS generated files
+Thumbs.db
+.DS_Store
