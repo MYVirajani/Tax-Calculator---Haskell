@@ -10,12 +10,7 @@
 
 ## Problem Description
 
-Income tax calculation is a critical component of financial and governmental systems.  
-Manual or poorly designed tax computation software can lead to incorrect results, lack of transparency, and difficulty in auditing.
-
-This project implements a **Tax Calculator** using **pure functional programming principles in Haskell**.  
-The system calculates personal income tax based on progressive tax brackets and provides a detailed tax breakdown for each slab.  
-The application demonstrates how functional programming ensures **correctness, reliability, and maintainability** in real-world financial software.
+Income tax calculation is a critical component of financial and governmental systems. Manual or poorly designed tax computation software can lead to incorrect results, lack of transparency, and difficulty in auditing. This project implements a **Tax Calculator** using **pure functional programming principles in Haskell**. The system calculates personal income tax based on progressive tax brackets and provides a detailed tax breakdown for each slab. The application demonstrates how functional programming ensures **correctness, reliability, and maintainability** in real-world financial software.
 
 ---
 
@@ -110,3 +105,4 @@ sum (map slabTax breakdown)
 5. Immutability
 
 All values are immutable; new values are created instead of modifying existing ones, improving safety and predictability.
+
