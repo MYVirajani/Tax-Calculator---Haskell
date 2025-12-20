@@ -1,17 +1,14 @@
 # Tax Calculator – Functional Programming Mini Project (Haskell)
 
-## Project Title
-**Tax Calculator using Functional Programming in Haskell**
-
 ## Group Members
-- EG/2020/41   
+- EG/2020/4183 Samasthi H.G.S.R
 - EG/2020/4115 Poornima K.N.
 - EG/2020/4254 Virajani M.Y.
 - EG/2020/4257 Wahalathanthri W.A.S  
 
 ---
 
-## Problem Description (Real-World Scenario)
+## Problem Description
 
 Income tax calculation is a critical component of financial and governmental systems.  
 Manual or poorly designed tax computation software can lead to incorrect results, lack of transparency, and difficulty in auditing.
@@ -47,16 +44,23 @@ CSV format:
 
 Name,Income
 Yasodha,1400000
-Arun,750000
+Amesha,750000
+Sayuri,120000
+Nethmi,45000
+```
+---
 
-Sample Input / Output
-Sample Input
+## Sample Input / Output
+
+### Sample Input
+```
 Enter your name:
 Yasodha
 Enter your annual income (numbers only):
 1400000
-
-Sample Output
+```
+### Sample Output
+```
 Tax summary for: Yasodha
 Annual Income: Rs 1400000.0
 Total Tax: Rs 145000.0
@@ -65,6 +69,8 @@ Breakdown by slab:
   Taxed Rs 500000.0 @ 10.00% => Rs 50000.0
   Taxed Rs 400000.0 @ 20.00% => Rs 80000.0
 ```
+---
+
 ## Functional Programming Concepts Used
 1. Pure Functions
 
@@ -104,8 +110,3 @@ sum (map slabTax breakdown)
 5. Immutability
 
 All values are immutable; new values are created instead of modifying existing ones, improving safety and predictability.
-
-Conclusion
-
-This project demonstrates how functional programming in Haskell can be used to build reliable, accurate, and maintainable financial applications.
-The Tax Calculator serves as a real-world example of how purity, recursion, and strong typing improve software quality and correctness.
