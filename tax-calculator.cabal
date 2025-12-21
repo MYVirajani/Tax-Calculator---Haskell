@@ -1,0 +1,36 @@
+cabal-version:      2.4
+name:               tax-calculator
+version:            1.0.0.0
+synopsis:           Tax Calculator with Web Interface
+description:        A functional programming tax calculator with REST API
+license:            BSD-3-Clause
+author:             Tax Calculator Team
+maintainer:         team@taxcalculator.com
+category:           Web
+
+executable tax-calculator-cli
+    main-is:          Main.hs
+    other-modules:    DataTypes
+                    , Processing
+                    , IOHandler
+                    , Utils
+    build-depends:    base >=4.14 && <5
+    hs-source-dirs:   .
+    default-language: Haskell2010
+
+executable tax-calculator-web
+    main-is:          MainWeb.hs
+    other-modules:    DataTypes
+                    , Processing
+                    , Utils
+                    , WebServer
+    build-depends:    base >=4.14 && <5
+                    , scotty
+                    , aeson
+                    , text
+                    , wai
+                    , wai-cors
+                    , wai-middleware-static
+    hs-source-dirs:   .
+    default-language: Haskell2010
+    ghc-options:      -threaded

@@ -441,7 +441,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
-        // Tax calculation logic (matching Haskell implementation)
+        // Tax calculation logic 
         const taxBrackets = [
             { limit: 500000, rate: 0.05 },
             { limit: 500000, rate: 0.10 },
@@ -487,31 +487,79 @@
             document.getElementById(tab + '-tab').classList.add('active');
         }
 
-        document.getElementById('singleForm').addEventListener('submit', function(e) {
+        // API Configuration
+        const API_URL = 'http://localhost:3000/api';
+        const USE_BACKEND = true; 
+
+        document.getElementById('singleForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const name = document.getElementById('name').value;
             const income = parseFloat(document.getElementById('income').value);
             const deductions = parseFloat(document.getElementById('deductions').value) || 0;
-            const taxableIncome = Math.max(0, income - deductions);
 
             // Show loading
             document.getElementById('loading').classList.add('show');
             document.getElementById('result').classList.remove('show');
 
-            // Simulate calculation delay
-            setTimeout(() => {
-                const result = calculateTax(taxableIncome);
+            try {
+                let result;
+                
+                if (USE_BACKEND) {
+                    // Call Haskell backend
+                    const response = await fetch(`${API_URL}/calculate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            reqName: name,
+                            reqIncome: income,
+                            reqDeductions: deductions
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Backend calculation failed');
+                    }
+
+                    const data = await response.json();
+                    
+                    result = {
+                        name: data.respName,
+                        income: data.respIncome,
+                        deductions: data.respDeductions,
+                        taxableIncome: data.respTaxableIncome,
+                        totalTax: data.respTotalTax,
+                        breakdown: data.respBreakdown.map(b => ({
+                            limit: b.slabLimit,
+                            rate: b.slabRate,
+                            tax: b.slabTax
+                        }))
+                    };
+                } else {
+                    // fallback
+                    const taxableIncome = Math.max(0, income - deductions);
+                    const calcResult = calculateTax(taxableIncome);
+                    result = {
+                        name: name,
+                        income: income,
+                        deductions: deductions,
+                        taxableIncome: taxableIncome,
+                        totalTax: calcResult.totalTax,
+                        breakdown: calcResult.breakdown
+                    };
+                }
 
                 // Hide loading, show result
                 document.getElementById('loading').classList.remove('show');
                 document.getElementById('result').classList.add('show');
 
                 // Update result
-                document.getElementById('resultName').textContent = name;
-                document.getElementById('resultIncome').textContent = formatCurrency(income);
-                document.getElementById('resultDeductions').textContent = formatCurrency(deductions);
-                document.getElementById('resultTaxable').textContent = formatCurrency(taxableIncome);
+                document.getElementById('resultName').textContent = result.name;
+                document.getElementById('resultIncome').textContent = formatCurrency(result.income);
+                document.getElementById('resultDeductions').textContent = formatCurrency(result.deductions);
+                document.getElementById('resultTaxable').textContent = formatCurrency(result.taxableIncome);
                 document.getElementById('resultTax').textContent = formatCurrency(result.totalTax);
 
                 // Update breakdown table
@@ -534,8 +582,14 @@
                     cumulative += item.limit;
                 });
 
+                // Scroll to result
                 document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 500);
+                
+            } catch (error) {
+                document.getElementById('loading').classList.remove('show');
+                alert('Error calculating tax. Make sure the Haskell server is running on http://localhost:3000\n\nError: ' + error.message);
+                console.error('Calculation error:', error);
+            }
         });
 
         function resetForm() {
@@ -555,49 +609,110 @@
             reader.readAsText(file);
         }
 
-        function processBatchCSV(csv) {
+        async function processBatchCSV(csv) {
             const lines = csv.trim().split('\n');
             const batchResult = document.getElementById('batchResult');
             
-            batchResults = []; // Reset batch results
-            let html = '<h3 style="margin: 20px 0;">Batch Results</h3>';
+            batchResults = [];
             let hasHeader = lines[0].toLowerCase().includes('name') && lines[0].toLowerCase().includes('income');
             const dataLines = hasHeader ? lines.slice(1) : lines;
 
+            const taxpayers = [];
             dataLines.forEach(line => {
                 const [name, incomeStr] = line.split(',').map(s => s.trim());
                 const income = parseFloat(incomeStr);
 
                 if (name && !isNaN(income)) {
-                    const result = calculateTax(income);
-                    
-                    // Store result for batch download
-                    batchResults.push({
-                        name: name,
-                        income: income,
-                        totalTax: result.totalTax,
-                        breakdown: result.breakdown
+                    taxpayers.push({
+                        reqName: name,
+                        reqIncome: income,
+                        reqDeductions: 0
                     });
-                    
+                }
+            });
+
+            if (taxpayers.length === 0) {
+                batchResult.innerHTML = '<div class="error">No valid taxpayers found in CSV</div>';
+                return;
+            }
+
+            batchResult.innerHTML = '<div class="loading show"><div class="spinner"></div><p>Processing batch...</p></div>';
+
+            try {
+                let responses;
+                
+                if (USE_BACKEND) {
+                    // Call Haskell backend for batch processing
+                    const response = await fetch(`${API_URL}/calculate-batch`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            batchTaxpayers: taxpayers
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Batch calculation failed');
+                    }
+
+                    const data = await response.json();
+                    responses = data.batchResults.map(r => ({
+                        name: r.respName,
+                        income: r.respIncome,
+                        totalTax: r.respTotalTax,
+                        breakdown: r.respBreakdown
+                    }));
+                } else {
+                    // fallback
+                    responses = taxpayers.map(tp => {
+                        const result = calculateTax(tp.reqIncome);
+                        return {
+                            name: tp.reqName,
+                            income: tp.reqIncome,
+                            totalTax: result.totalTax,
+                            breakdown: result.breakdown
+                        };
+                    });
+                }
+
+                // Store results
+                batchResults = responses;
+
+                // Display results
+                let html = '<h3 style="margin: 20px 0;">Batch Results</h3>';
+                html += `<div class="success">Successfully processed ${responses.length} taxpayers using Haskell backend!</div>`;
+
+                responses.forEach(result => {
                     html += `
                         <div class="result-card show" style="margin-bottom: 15px;">
-                            <h3 style="color: #667eea; margin-bottom: 10px;">${name}</h3>
+                            <h3 style="color: #667eea; margin-bottom: 10px;">${result.name}</h3>
                             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                                <div><strong>Income:</strong> ${formatCurrency(income)}</div>
+                                <div><strong>Income:</strong> ${formatCurrency(result.income)}</div>
                                 <div><strong>Tax:</strong> ${formatCurrency(result.totalTax)}</div>
                             </div>
                         </div>
                     `;
-                }
-            });
+                });
 
-            html += `
-                <div style="margin-top: 20px; text-align: center;">
-                    <button class="btn btn-success" onclick="downloadBatchPDF()">📄 Download PDF Report</button>
-                    <button class="btn btn-secondary" onclick="downloadBatchCSV()">📊 Download CSV</button>
-                </div>
-            `;
-            batchResult.innerHTML = html;
+                html += `
+                    <div style="margin-top: 20px; text-align: center;">
+                        <button class="btn btn-success" onclick="downloadBatchPDF()">📄 Download PDF Report</button>
+                        <button class="btn btn-secondary" onclick="downloadBatchCSV()">📊 Download CSV</button>
+                    </div>
+                `;
+                batchResult.innerHTML = html;
+
+            } catch (error) {
+                batchResult.innerHTML = `
+                    <div class="error">
+                        Error processing batch. Make sure the Haskell server is running.<br>
+                        Error: ${error.message}
+                    </div>
+                `;
+                console.error('Batch processing error:', error);
+            }
         }
 
         function downloadPDF() {
@@ -642,7 +757,7 @@
             doc.text(`Deductions: Rs ${deductions.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`, 20, 82);
             doc.text(`Taxable Income: Rs ${taxableIncome.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`, 20, 89);
             
-            // Tax Summary
+            // Tax Summary (highlighted)
             doc.setFillColor(102, 126, 234);
             doc.rect(20, 95, 170, 12, 'F');
             doc.setTextColor(255, 255, 255);
@@ -730,6 +845,7 @@
             let yPos = 55;
             
             batchResults.forEach((result, index) => {
+                // Check if we need a new page
                 if (yPos > 250) {
                     doc.addPage();
                     yPos = 20;
